@@ -40,3 +40,21 @@ pip install -r requirements.txt
 ```bash
 streamlit run app.py
 ```
+
+## 4) Run tests
+
+**Without coverage:**
+```bash
+pytest tests/
+```
+
+**With coverage report:**
+```bash
+pytest tests/ --cov=utils --cov-report=term-missing
+```
+
+**Generate HTML coverage report:**
+```bash
+pytest tests/ --cov=utils --cov-report=html
+```
+Then open `htmlcov/index.html` in your browser.
