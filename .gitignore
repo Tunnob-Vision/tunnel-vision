@@ -2,7 +2,9 @@ venv/
 __pycache__/
 *.pyc
 .DS_Store
+
 .coverage
+htmlcov/
 
 cv/data/
 ml/data/
