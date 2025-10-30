@@ -1,1 +1,7 @@
 venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+cv/data/
+ml/data/
