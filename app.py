@@ -1,10 +1,3 @@
-import streamlit as st
+from views import upload_page
 
-st.title("🎯 Streamlit Test")
-st.write("If you see this, Streamlit works!")
-
-name = st.text_input("What's your name?")
-st.write(f"Hello, {name}!")
-
-if st.button("Click me!"):
-    st.balloons()
+upload_page.show_upload_page()
