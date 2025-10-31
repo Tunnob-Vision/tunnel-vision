@@ -8,7 +8,6 @@ if st.session_state['current_page'] is None:
     if st.button("Upload Page"):
         st.session_state['current_page'] = 'upload'
         st.rerun()
-
     if st.button("Confirmation Page"):
         st.session_state['current_page'] = 'confirmation'
         st.rerun()
