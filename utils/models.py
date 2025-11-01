@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from typing import List, TypeVar
 
 T = TypeVar('T')
+RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
+SUITS = ['♥', '♦', '♣', '♠']
 
 @dataclass(frozen=True)
 class Card:
@@ -9,19 +11,15 @@ class Card:
     suit: str
 
     def __post_init__(self):
-        valid_ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
-        valid_suits = ['Hearts', 'Diamonds', 'Clubs', 'Spades']
+        object.__setattr__(self, "rank", self.rank.strip().capitalize())
 
-        object.__setattr__(self, "rank", self.rank.strip().upper())
-        object.__setattr__(self, "suit", self.suit.strip().capitalize())
-
-        if self.rank not in valid_ranks:
-            raise ValueError(f"Invalid rank '{self.rank}'. Must be one of: {valid_ranks}")
-        if self.suit not in valid_suits:
-            raise ValueError(f"Invalid suit '{self.suit}'. Must be one of: {valid_suits}")
+        if self.rank not in RANKS:
+            raise ValueError(f"Invalid rank '{self.rank}'. Must be one of: {RANKS}")
+        if self.suit not in SUITS:
+            raise ValueError(f"Invalid suit '{self.suit}'. Must be one of: {SUITS}")
 
     def __str__(self):
-        return f"{self.rank}{self.suit[0].upper()}"
+        return f"{self.rank}{self.suit}"
 
 def does_contain_duplicate(list: List[T]) -> bool:
     return len(set(list)) != len(list)
@@ -64,9 +62,7 @@ class Community:
 
 def get_full_deck() -> List[Card]:
     """Return a standard 52-card poker deck."""
-    ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
-    suits = ['Hearts', 'Diamonds', 'Clubs', 'Spades']
-    return [Card(rank, suit) for suit in suits for rank in ranks]
+    return [Card(rank, suit) for suit in SUITS for rank in RANKS]
 
 def get_remaining_cards(used: List[Card]) -> List[Card]:
     """Return all cards in the deck that have not been used."""

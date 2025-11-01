@@ -11,36 +11,36 @@ from utils.models import (
 
 class TestCard:
     def test_valid_card_creation(self):
-        card = Card(rank="A", suit="Spades")
+        card = Card(rank="A", suit="♥")
         assert card.rank == "A"
-        assert card.suit == "Spades"
+        assert card.suit == "♥"
 
-    def test_card_normalizes_rank_and_suit(self):
-        card1 = Card(rank="a", suit="spades")
+    def test_card_normalizes_rank(self):
+        card1 = Card(rank="a", suit="♥")
         assert card1.rank == "A"
-        assert card1.suit == "Spades"
+        assert card1.suit == "♥"
 
-        card2 = Card(rank="  K  ", suit="  hearts  ")
+        card2 = Card(rank="  K  ", suit="♦")
         assert card2.rank == "K"
-        assert card2.suit == "Hearts"
+        assert card2.suit == "♦"
 
     def test_card_invalid_rank(self):
         with pytest.raises(ValueError, match="Invalid rank"):
-            Card(rank="X", suit="Spades")
+            Card(rank="X", suit="♥")
 
     def test_card_invalid_suit(self):
         with pytest.raises(ValueError, match="Invalid suit"):
             Card(rank="A", suit="Stars")
 
     def test_card_str_representation(self):
-        card = Card(rank="A", suit="Spades")
-        assert str(card) == "AS"
+        card = Card(rank="A", suit="♠")
+        assert str(card) == "A♠"
 
-        card2 = Card(rank="10", suit="Hearts")
-        assert str(card2) == "10H"
+        card2 = Card(rank="10", suit="♥")
+        assert str(card2) == "10♥"
 
     def test_card_is_frozen(self):
-        card = Card(rank="A", suit="Spades")
+        card = Card(rank="A", suit="♥")
         with pytest.raises(Exception):
             card.rank = "K"
 
@@ -63,27 +63,27 @@ class TestDoesContainDuplicate:
 
 class TestHand:
     def test_valid_hand_creation(self):
-        card1 = Card(rank="A", suit="Spades")
-        card2 = Card(rank="K", suit="Hearts")
+        card1 = Card(rank="A", suit="♠")
+        card2 = Card(rank="K", suit="♥")
         hand = Hand(cards=[card1, card2])
         assert len(hand.cards) == 2
 
     def test_hand_too_few_cards(self):
-        card = Card(rank="A", suit="Spades")
+        card = Card(rank="A", suit="♠")
         with pytest.raises(ValueError, match="exactly 2 cards"):
             Hand(cards=[card])
 
     def test_hand_too_many_cards(self):
         cards = [
-            Card(rank="A", suit="Spades"),
-            Card(rank="K", suit="Hearts"),
-            Card(rank="Q", suit="Diamonds"),
+            Card(rank="A", suit="♠"),
+            Card(rank="K", suit="♥"),
+            Card(rank="Q", suit="♦"),
         ]
         with pytest.raises(ValueError, match="exactly 2 cards"):
             Hand(cards=cards)
 
     def test_hand_duplicate_cards(self):
-        card = Card(rank="A", suit="Spades")
+        card = Card(rank="A", suit="♠")
         with pytest.raises(ValueError, match="cannot contain duplicate cards"):
             Hand(cards=[card, card])
 
@@ -95,61 +95,61 @@ class TestCommunity:
 
     def test_valid_community_flop(self):
         cards = [
-            Card(rank="A", suit="Spades"),
-            Card(rank="K", suit="Hearts"),
-            Card(rank="Q", suit="Diamonds"),
+            Card(rank="A", suit="♠"),
+            Card(rank="K", suit="♥"),
+            Card(rank="Q", suit="♦"),
         ]
         community = Community(cards=cards)
         assert community.stage() == "Flop"
 
     def test_valid_community_turn(self):
         cards = [
-            Card(rank="A", suit="Spades"),
-            Card(rank="K", suit="Hearts"),
-            Card(rank="Q", suit="Diamonds"),
-            Card(rank="J", suit="Clubs"),
+            Card(rank="A", suit="♠"),
+            Card(rank="K", suit="♥"),
+            Card(rank="Q", suit="♦"),
+            Card(rank="J", suit="♣"),
         ]
         community = Community(cards=cards)
         assert community.stage() == "Turn"
 
     def test_valid_community_river(self):
         cards = [
-            Card(rank="A", suit="Spades"),
-            Card(rank="K", suit="Hearts"),
-            Card(rank="Q", suit="Diamonds"),
-            Card(rank="J", suit="Clubs"),
-            Card(rank="10", suit="Spades"),
+            Card(rank="A", suit="♠"),
+            Card(rank="K", suit="♥"),
+            Card(rank="Q", suit="♦"),
+            Card(rank="J", suit="♣"),
+            Card(rank="10", suit="♠"),
         ]
         community = Community(cards=cards)
         assert community.stage() == "River"
 
     def test_community_too_many_cards(self):
         cards = [
-            Card(rank="A", suit="Spades"),
-            Card(rank="K", suit="Hearts"),
-            Card(rank="Q", suit="Diamonds"),
-            Card(rank="J", suit="Clubs"),
-            Card(rank="10", suit="Spades"),
-            Card(rank="9", suit="Hearts"),
+            Card(rank="A", suit="♠"),
+            Card(rank="K", suit="♥"),
+            Card(rank="Q", suit="♦"),
+            Card(rank="J", suit="♣"),
+            Card(rank="10", suit="♠"),
+            Card(rank="9", suit="♥"),
         ]
         with pytest.raises(ValueError, match="cannot exceed 5"):
             Community(cards=cards)
 
     def test_community_duplicate_cards(self):
-        card = Card(rank="A", suit="Spades")
+        card = Card(rank="A", suit="♠")
         with pytest.raises(ValueError, match="cannot contain duplicate cards"):
             Community(cards=[card, card])
 
     def test_community_stage_too_many_cards(self):
         cards = [
-            Card(rank="A", suit="Spades"),
-            Card(rank="K", suit="Hearts"),
-            Card(rank="Q", suit="Diamonds"),
-            Card(rank="J", suit="Clubs"),
-            Card(rank="10", suit="Spades"),
-            Card(rank="9", suit="Hearts"),
+            Card(rank="A", suit="♠"),
+            Card(rank="K", suit="♥"),
+            Card(rank="Q", suit="♦"),
+            Card(rank="J", suit="♣"),
+            Card(rank="10", suit="♠"),
+            Card(rank="9", suit="♥"),
         ]
-        community = Community(cards=[Card(rank="A", suit="Spades")])
+        community = Community(cards=[Card(rank="A", suit="♠")])
         object.__setattr__(community, "cards", cards)
         with pytest.raises(ValueError, match="cannot exceed 5"):
             community.stage()
@@ -167,8 +167,8 @@ class TestDeckFunctions:
 
     def test_get_remaining_cards(self):
         used = [
-            Card(rank="A", suit="Spades"),
-            Card(rank="K", suit="Hearts"),
+            Card(rank="A", suit="♠"),
+            Card(rank="K", suit="♥"),
         ]
         remaining = get_remaining_cards(used)
         assert len(remaining) == 50
@@ -183,13 +183,13 @@ class TestDeckFunctions:
 class TestPokerGameState:
     def test_valid_game_state(self):
         hand = Hand(cards=[
-            Card(rank="A", suit="Spades"),
-            Card(rank="K", suit="Hearts"),
+            Card(rank="A", suit="♠"),
+            Card(rank="K", suit="♥"),
         ])
         community = Community(cards=[
-            Card(rank="Q", suit="Diamonds"),
-            Card(rank="J", suit="Clubs"),
-            Card(rank="10", suit="Spades"),
+            Card(rank="Q", suit="♦"),
+            Card(rank="J", suit="♣"),
+            Card(rank="10", suit="♠"),
         ])
         state = PokerGameState(
             player_hand=hand,
@@ -202,8 +202,8 @@ class TestPokerGameState:
 
     def test_game_state_negative_chips(self):
         hand = Hand(cards=[
-            Card(rank="A", suit="Spades"),
-            Card(rank="K", suit="Hearts"),
+            Card(rank="A", suit="♠"),
+            Card(rank="K", suit="♥"),
         ])
         community = Community(cards=[])
         with pytest.raises(ValueError, match="chips cannot be negative"):
@@ -216,8 +216,8 @@ class TestPokerGameState:
 
     def test_game_state_negative_pot(self):
         hand = Hand(cards=[
-            Card(rank="A", suit="Spades"),
-            Card(rank="K", suit="Hearts"),
+            Card(rank="A", suit="♠"),
+            Card(rank="K", suit="♥"),
         ])
         community = Community(cards=[])
         with pytest.raises(ValueError, match="pot size cannot be negative"):
@@ -229,9 +229,9 @@ class TestPokerGameState:
             )
 
     def test_game_state_duplicate_between_hand_and_community(self):
-        card = Card(rank="A", suit="Spades")
-        hand = Hand(cards=[card, Card(rank="K", suit="Hearts")])
-        community = Community(cards=[card, Card(rank="Q", suit="Diamonds")])
+        card = Card(rank="A", suit="♠")
+        hand = Hand(cards=[card, Card(rank="K", suit="♥")])
+        community = Community(cards=[card, Card(rank="Q", suit="♦")])
         with pytest.raises(ValueError, match="cannot contain duplicate cards"):
             PokerGameState(
                 player_hand=hand,
@@ -242,8 +242,8 @@ class TestPokerGameState:
 
     def test_game_state_zero_values(self):
         hand = Hand(cards=[
-            Card(rank="A", suit="Spades"),
-            Card(rank="K", suit="Hearts"),
+            Card(rank="A", suit="♠"),
+            Card(rank="K", suit="♥"),
         ])
         community = Community(cards=[])
         state = PokerGameState(
