@@ -1,8 +1,31 @@
 import os
 import tempfile
+import sys
 
 os.environ["OPENCV_DISABLE_QT"] = "1"
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
+
+try:
+    import pkg_resources
+    import subprocess
+
+    installed = {pkg.key: pkg for pkg in pkg_resources.working_set}
+    has_opencv = 'opencv-python' in installed
+    has_headless = 'opencv-python-headless' in installed
+
+    if has_opencv and has_headless:
+        try:
+            subprocess.run(
+                [sys.executable, "-m", "pip", "uninstall", "-y", "opencv-python"],
+                capture_output=True,
+                check=False
+            )
+            if 'cv2' in sys.modules:
+                del sys.modules['cv2']
+        except Exception:
+            pass
+except Exception:
+    pass
 
 from ultralytics import YOLO
 from PIL import Image
