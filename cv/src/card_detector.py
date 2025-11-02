@@ -1,5 +1,9 @@
 import os
 import tempfile
+
+os.environ["OPENCV_DISABLE_QT"] = "1"
+os.environ["QT_QPA_PLATFORM"] = "offscreen"
+
 from ultralytics import YOLO
 from PIL import Image
 import streamlit as st

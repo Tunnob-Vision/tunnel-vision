@@ -1,3 +1,8 @@
+import os
+
+os.environ["OPENCV_DISABLE_QT"] = "1"
+os.environ["QT_QPA_PLATFORM"] = "offscreen"
+
 from views import upload_page, confirmation_page
 import streamlit as st
 
