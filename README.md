@@ -50,11 +50,15 @@ pytest tests/
 
 **With coverage report:**
 ```bash
-pytest tests/ --cov=utils --cov-report=term-missing
+pytest tests/ --cov=. --cov-report=term-missing
 ```
 
 **Generate HTML coverage report:**
 ```bash
-pytest tests/ --cov=utils --cov-report=html
+pytest tests/ --cov=. --cov-report=html
 ```
 Then open `htmlcov/index.html` in your browser.
+
+## 5) Deployment
+
+The app is deployed and running at: **https://tunnel-vision.streamlit.app**
