@@ -11,6 +11,9 @@ if st.session_state['current_page'] is None:
     if st.button("Confirmation Page"):
         st.session_state['current_page'] = 'confirmation'
         st.rerun()
+    if st.button("Game Input Page"):
+        st.session_state['current_page'] = 'game input'
+        st.rerun()
 else:
     if st.session_state['current_page'] == 'upload':
         if st.button("← Back"):
@@ -22,3 +25,8 @@ else:
             st.session_state['current_page'] = None
             st.rerun()
         confirmation_page.show_confirmation_page()
+    elif st.session_state['current_page'] == 'game input':
+        if st.button("← Back"):
+            st.session_state['current_page'] = None
+            st.rerun()
+        game_input_page.show_game_input_page()
