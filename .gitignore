@@ -11,7 +11,7 @@ htmlcov/
 cv/data/
 ml/data/
 
-# Unzipped poker images dataset
+# Unzipped poker images dataset & model results
 cv/src/dataset/
 runs/
 yolov8n.pt
@@ -19,3 +19,4 @@ yolovv8s.pt
 yolov8m.pt
 yolov8l.pt
 yolov8x.pt
+**.zip
