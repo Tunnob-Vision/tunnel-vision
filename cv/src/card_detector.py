@@ -1,40 +1,41 @@
 import os
 import tempfile
 import sys
+import subprocess
 
 os.environ["OPENCV_DISABLE_QT"] = "1"
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
-# Force use of opencv-python-headless by prioritizing it in sys.path
-# This prevents libGL.so.1 errors on Streamlit Cloud when both packages are installed
 if 'cv2' not in sys.modules:
     try:
-        import pkg_resources
-        import site
-        
-        # Find both opencv packages
-        headless_pkg = None
-        regular_pkg = None
-        
-        for pkg in pkg_resources.working_set:
-            if pkg.key == 'opencv-python-headless':
-                headless_pkg = pkg
-            elif pkg.key == 'opencv-python':
-                regular_pkg = pkg
-        
-        # If both are installed, prioritize headless version
-        if headless_pkg and regular_pkg:
-            # Insert headless package location at the beginning of sys.path
-            # so it's found before the regular opencv-python
-            headless_location = headless_pkg.location
-            if headless_location not in sys.path or sys.path.index(headless_location) > 0:
-                if headless_location in sys.path:
-                    sys.path.remove(headless_location)
-                sys.path.insert(0, headless_location)
-    except Exception:
-        pass  # If package detection fails, proceed with normal import
+        try:
+            from importlib.metadata import distributions
+            installed_packages = {dist.metadata['Name']: dist for dist in distributions()}
+        except ImportError:
+            import pkg_resources
+            installed_packages = {pkg.key: pkg for pkg in pkg_resources.working_set}
 
-# Now import cv2 - it should use the headless version if both are installed
+        has_opencv = 'opencv-python' in installed_packages
+        has_headless = 'opencv-python-headless' in installed_packages
+
+        if has_opencv and has_headless:
+            try:
+                result = subprocess.run(
+                    [sys.executable, "-m", "pip", "uninstall", "-y", "opencv-python"],
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                if 'cv2' in sys.modules:
+                    del sys.modules['cv2']
+                import importlib
+                if 'cv2' in sys.modules:
+                    del sys.modules['cv2']
+            except Exception:
+                pass
+    except Exception:
+        pass
+
 try:
     import cv2
 except ImportError as e:
