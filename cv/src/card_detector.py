@@ -1,51 +1,5 @@
 import os
 import tempfile
-import sys
-import subprocess
-
-os.environ["OPENCV_DISABLE_QT"] = "1"
-os.environ["QT_QPA_PLATFORM"] = "offscreen"
-
-if 'cv2' not in sys.modules:
-    try:
-        try:
-            from importlib.metadata import distributions
-            installed_packages = {dist.metadata['Name']: dist for dist in distributions()}
-        except ImportError:
-            import pkg_resources
-            installed_packages = {pkg.key: pkg for pkg in pkg_resources.working_set}
-
-        has_opencv = 'opencv-python' in installed_packages
-        has_headless = 'opencv-python-headless' in installed_packages
-
-        if has_opencv and has_headless:
-            try:
-                result = subprocess.run(
-                    [sys.executable, "-m", "pip", "uninstall", "-y", "opencv-python"],
-                    capture_output=True,
-                    text=True,
-                    timeout=30
-                )
-                if 'cv2' in sys.modules:
-                    del sys.modules['cv2']
-                import importlib
-                if 'cv2' in sys.modules:
-                    del sys.modules['cv2']
-            except Exception:
-                pass
-    except Exception:
-        pass
-
-try:
-    import cv2
-except ImportError as e:
-    if 'libGL' in str(e):
-        raise ImportError(
-            "OpenCV import failed due to missing libGL.so.1. "
-            "Please ensure 'opencv-python-headless' is installed and 'opencv-python' is removed."
-        ) from e
-    raise
-
 from ultralytics import YOLO
 from PIL import Image
 import streamlit as st
