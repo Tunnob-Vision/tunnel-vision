@@ -26,6 +26,7 @@ def remove_duplicate_cards(detections):
 def run_inference(image_file):
     """Run YOLOv8 inference on the given image file and remove duplicate detections."""
     img = Image.open(image_file).convert("RGB")
+    width, height = img.size
 
     temp_path = tempfile.mktemp(suffix=".jpg")
     img.save(temp_path)
@@ -33,7 +34,6 @@ def run_inference(image_file):
     with st.spinner("🔍 Detecting cards... please wait"):
         results = model.predict(source=temp_path, conf=0.4)
 
-    boxes_image = results[0].plot()
     detections = []
 
     for box in results[0].boxes:
@@ -46,6 +46,15 @@ def run_inference(image_file):
             "bbox": xyxy
         })
 
+    valid_detections = []
+    for det in detections:
+        x1, y1, x2, y2 = det["bbox"]
+        if 0 <= x1 < width and 0 <= y1 < height and 0 < x2 <= width and 0 < y2 <= height:
+            valid_detections.append(det)
+    detections = valid_detections
+
     detections = remove_duplicate_cards(detections)
+
+    boxes_image = results[0].plot()
 
     return boxes_image, detections
