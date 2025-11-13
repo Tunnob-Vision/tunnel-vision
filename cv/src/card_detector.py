@@ -32,7 +32,7 @@ def run_inference(image_file):
     img.save(temp_path)
 
     with st.spinner("🔍 Detecting cards... please wait"):
-        results = model.predict(source=temp_path, conf=0.4)
+        results = model.predict(source=temp_path, conf=0.6)
 
     detections = []
 
@@ -52,6 +52,8 @@ def run_inference(image_file):
         if 0 <= x1 < width and 0 <= y1 < height and 0 < x2 <= width and 0 < y2 <= height:
             valid_detections.append(det)
     detections = valid_detections
+
+    detections = [d for d in detections if d["confidence"] >= 0.6]
 
     detections = remove_duplicate_cards(detections)
 
