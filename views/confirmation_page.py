@@ -1,6 +1,12 @@
-import streamlit as st
 import random
-from utils.models import Hand, get_full_deck
+import streamlit as st
+
+from utils.models import Community, Hand, PokerGameState, get_full_deck
+from ml.src.decision_engine import (
+    DecisionContext,
+    DecisionResult,
+    get_decision_engine,
+)
 
 
 def generate_random_hand() -> Hand:
@@ -9,12 +15,22 @@ def generate_random_hand() -> Hand:
     cards = random.sample(deck, 2)
     return Hand(cards=cards)
 
+@st.cache_resource
+def _get_engine():
+    return get_decision_engine()
+
 
 def show_confirmation_page():
     st.title("Confirm your hand! ✅")
 
     if 'detected_hand' not in st.session_state:
-        st.session_state['detected_hand'] = generate_random_hand()
+        detected_cards = st.session_state.get('detected_cards', [])
+        if detected_cards and len(detected_cards) >= 2:
+            st.session_state['detected_hand'] = Hand(
+                cards=[detected_cards[0], detected_cards[1]]
+            )
+        else:
+            st.session_state['detected_hand'] = generate_random_hand()
 
     st.write("### We've detected the following cards:")
     st.write(", ".join(card.__str__() for card in st.session_state['detected_hand'].cards))
@@ -42,6 +58,18 @@ def show_confirmation_page():
         st.session_state['selected_cards'] = []
     st.session_state['selected_cards'] = selected_cards
 
+    st.write("### Add community cards (optional)")
+
+    community_defaults = st.session_state.get('community_cards', [])
+    community_cards = st.multiselect(
+        "Select board cards",
+        full_deck,
+        default=community_defaults,
+        format_func=lambda card: str(card),
+        max_selections=5,
+    )
+    st.session_state['community_cards'] = community_cards
+
     st.divider()
     col1, col2 = st.columns(2)
 
@@ -62,8 +90,94 @@ def show_confirmation_page():
                 del st.session_state['selected_cards']
             if 'player_hand' in st.session_state:
                 del st.session_state['player_hand']
+            for key in [
+                'community_cards',
+                'decision_result',
+                'player_stack',
+                'pot_size',
+                'amount_to_call',
+                'min_raise',
+                'strategy_profile',
+                'opponent_notes',
+                'detected_cards',
+            ]:
+                if key in st.session_state:
+                    del st.session_state[key]
             if 'camera_photo_captured' in st.session_state:
                 st.session_state['camera_photo_captured'] = False
             if 'photo' in st.session_state:
                 del st.session_state['photo']
             st.rerun()
+
+    st.divider()
+    st.write("### Game context")
+
+    default_stack = st.session_state.get('player_stack', 1000)
+    player_stack = st.number_input("Your stack (chips)", min_value=1, value=default_stack, step=10)
+    st.session_state['player_stack'] = player_stack
+
+    default_pot = st.session_state.get('pot_size', 50)
+    pot_size = st.number_input("Current pot size", min_value=0, value=default_pot, step=5)
+    st.session_state['pot_size'] = pot_size
+
+    default_call = st.session_state.get('amount_to_call', 10)
+    amount_to_call = st.number_input("Amount to call", min_value=0, value=default_call, step=5)
+    st.session_state['amount_to_call'] = amount_to_call
+
+    default_min_raise = st.session_state.get('min_raise', max(5, pot_size // 2 if pot_size else 5))
+    min_raise = st.number_input("Minimum raise size", min_value=1, value=default_min_raise, step=5)
+    st.session_state['min_raise'] = min_raise
+
+    strategy_options = ["tight", "balanced", "aggressive"]
+    default_strategy = st.session_state.get('strategy_profile', 'balanced')
+    if default_strategy not in strategy_options:
+        default_strategy = "balanced"
+    strategy_profile = st.selectbox(
+        "Strategy profile",
+        strategy_options,
+        index=strategy_options.index(default_strategy),
+    )
+    st.session_state['strategy_profile'] = strategy_profile
+
+    opponent_notes = st.text_area("Opponent notes / range hints (optional)", value=st.session_state.get('opponent_notes', ""))
+    st.session_state['opponent_notes'] = opponent_notes
+
+    engine = _get_engine()
+
+    if st.button("💡 Get Recommendation", type="primary", use_container_width=True):
+        if 'player_hand' not in st.session_state:
+            st.error("Please confirm your hand first.")
+        else:
+            try:
+                community = Community(cards=st.session_state.get('community_cards', []).copy())
+                game_state = PokerGameState(
+                    player_hand=st.session_state['player_hand'],
+                    community=community,
+                    player_chips=int(player_stack),
+                    pot_size=int(pot_size),
+                )
+                context = DecisionContext(
+                    pot_to_call=int(amount_to_call) if amount_to_call else None,
+                    min_raise=int(min_raise) if min_raise else None,
+                    strategy_profile=strategy_profile,
+                    notes=opponent_notes or None,
+                )
+                result = engine.recommend_action(game_state, context)
+                st.session_state['decision_result'] = result
+                st.toast("Recommendation ready!", icon="🤖")
+            except ValueError as exc:
+                st.error(str(exc))
+
+    if 'decision_result' in st.session_state:
+        display_decision_result(st.session_state['decision_result'])
+
+
+def display_decision_result(result: DecisionResult):
+    st.subheader("Model Recommendation")
+    st.metric("Action", result.action.upper(), delta=f"Confidence {result.confidence:.0%}")
+    if result.recommended_bet:
+        st.write(f"Recommended bet size: {result.recommended_bet}")
+    st.caption(f"Strategy profile: {result.strategy_profile}")
+    st.write("#### Rationale")
+    for note in result.rationale:
+        st.write(f"- {note}")
