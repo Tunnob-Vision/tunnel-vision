@@ -7,6 +7,7 @@ from ml.src.decision_engine import (
     DecisionResult,
     get_decision_engine,
 )
+from ml.src.equity import describe_made_hand
 
 
 def generate_random_hand() -> Hand:
@@ -70,6 +71,8 @@ def show_confirmation_page():
     )
     st.session_state['community_cards'] = community_cards
 
+    render_hand_summary()
+
     st.divider()
     col1, col2 = st.columns(2)
 
@@ -100,6 +103,7 @@ def show_confirmation_page():
                 'strategy_profile',
                 'opponent_notes',
                 'detected_cards',
+                'num_opponents',
             ]:
                 if key in st.session_state:
                     del st.session_state[key]
@@ -127,6 +131,16 @@ def show_confirmation_page():
     default_min_raise = st.session_state.get('min_raise', max(5, pot_size // 2 if pot_size else 5))
     min_raise = st.number_input("Minimum raise size", min_value=1, value=default_min_raise, step=5)
     st.session_state['min_raise'] = min_raise
+
+    default_opponents = st.session_state.get('num_opponents', 1)
+    num_opponents = st.number_input(
+        "Number of opponents in hand",
+        min_value=1,
+        max_value=6,
+        value=default_opponents,
+        step=1,
+    )
+    st.session_state['num_opponents'] = num_opponents
 
     strategy_options = ["tight", "balanced", "aggressive"]
     default_strategy = st.session_state.get('strategy_profile', 'balanced')
@@ -160,6 +174,7 @@ def show_confirmation_page():
                     pot_to_call=int(amount_to_call) if amount_to_call else None,
                     min_raise=int(min_raise) if min_raise else None,
                     strategy_profile=strategy_profile,
+                    num_opponents=int(num_opponents),
                     notes=opponent_notes or None,
                 )
                 result = engine.recommend_action(game_state, context)
@@ -178,6 +193,30 @@ def display_decision_result(result: DecisionResult):
     if result.recommended_bet:
         st.write(f"Recommended bet size: {result.recommended_bet}")
     st.caption(f"Strategy profile: {result.strategy_profile}")
+    equity = getattr(result, "equity", None)
+    if equity is not None:
+        st.write(f"Estimated equity: {equity:.0%}")
     st.write("#### Rationale")
     for note in result.rationale:
         st.write(f"- {note}")
+
+
+def render_hand_summary():
+    player_hand = st.session_state.get('player_hand')
+    community_cards = st.session_state.get('community_cards', [])
+    if not player_hand or len(community_cards) < 3:
+        return
+    try:
+        community = Community(cards=community_cards.copy())
+    except ValueError as exc:
+        st.warning(f"Community cards invalid: {exc}")
+        return
+
+    summary = describe_made_hand(player_hand, community)
+    if not summary:
+        return
+
+    message = f"Current hand: {summary.label}"
+    if summary.percentile is not None:
+        message += f" · Beats roughly {summary.percentile:.0%} of other hole cards on this board."
+    st.info(message)

@@ -12,6 +12,7 @@ from enum import Enum
 from typing import Dict, List, Literal, Optional
 
 from utils.models import Card, Community, Hand, PokerGameState
+from ml.src.equity import EquityEstimate, estimate_equity
 
 StrategyProfile = Literal["tight", "balanced", "aggressive"]
 ActionType = Literal["fold", "call", "raise"]
@@ -36,7 +37,8 @@ class DecisionContext:
     pot_to_call: Optional[int] = None
     min_raise: Optional[int] = None
     strategy_profile: StrategyProfile = "balanced"
-    equity_samples: int = 5000
+    equity_samples: int = 2000
+    num_opponents: int = 1
     notes: Optional[str] = None
 
 
@@ -49,6 +51,7 @@ class DecisionResult:
     recommended_bet: Optional[int] = None
     rationale: List[str] = field(default_factory=list)
     strategy_profile: StrategyProfile = "balanced"
+    equity: Optional[float] = None
 
 
 class DecisionEngine:
@@ -78,12 +81,19 @@ class DecisionEngine:
     ) -> DecisionResult:
         context = context or DecisionContext()
         street = Street.from_community(state.community)
-        strength = self._estimate_strength(state.player_hand, state.community)
+        rationale = [f"Street: {street.value}"]
+        equity_info = self._maybe_estimate_equity(state, context)
+        if equity_info:
+            strength = equity_info.equity
+            rationale.append(
+                f"Equity vs {context.num_opponents} opp(s): {strength:.0%} "
+                f"(samples: {equity_info.trials})"
+            )
+        else:
+            strength = self._estimate_strength(state.player_hand, state.community)
+            rationale.append("Equity fallback: heuristic strength used.")
         pot_odds = self._compute_pot_odds(state.pot_size, context.pot_to_call)
-        rationale = [
-            f"Street: {street.value}",
-            f"Estimated strength: {strength:.2f}",
-        ]
+        rationale.append(f"Effective strength: {strength:.0%}")
 
         if pot_odds is not None:
             rationale.append(f"Pot odds: {pot_odds:.2f}")
@@ -108,9 +118,22 @@ class DecisionEngine:
             recommended_bet=bet,
             rationale=rationale,
             strategy_profile=context.strategy_profile,
+            equity=strength if equity_info else None,
         )
 
     # --- Heuristic helpers -------------------------------------------------
+
+    def _maybe_estimate_equity(
+        self, state: PokerGameState, context: DecisionContext
+    ) -> Optional[EquityEstimate]:
+        try:
+            return estimate_equity(
+                state,
+                opponents=max(1, context.num_opponents),
+                trials=max(200, context.equity_samples),
+            )
+        except ValueError:
+            return None
 
     def _estimate_strength(self, hand: Hand, community: Community) -> float:
         """Very rough estimate of hero strength in [0, 1]."""
