@@ -1,5 +1,6 @@
 import streamlit as st
 from cv.src.card_detector import run_inference
+from cv.src.card_parser import detections_to_cards
 
 def show_upload_page():
     """Show the main upload page where users can upload or take a photo."""
@@ -19,8 +20,17 @@ def show_upload_page():
             st.subheader("📋 Detected Cards:")
             for det in detections:
                 st.write(f"- {det['class']} ({det['confidence']:.2%})")
+
+            parsed = detections_to_cards(detections, max_cards=2)
+            if parsed:
+                st.session_state['detected_cards'] = [card for card, _ in parsed]
+                summary = ", ".join(f"{card} ({conf:.0%})" for card, conf in parsed)
+                st.success(f"Hand guess: {summary}")
+            else:
+                st.session_state.pop('detected_cards', None)
         else:
             st.warning("No cards detected. Try another photo!")
+            st.session_state.pop('detected_cards', None)
 
     with tab1:
         uploaded_photo = st.file_uploader(
