@@ -3,90 +3,118 @@ import time
 import argparse
 import os
 import mediapipe as mp
+from collections import defaultdict, deque
 
 mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 
+
+# -------------------------
+# Argument parsing
+# -------------------------
 def parse_args():
-    p = argparse.ArgumentParser(description="Simple webcam capture (OpenCV)")
-    p.add_argument("--camera", "-c", type=int, default=0, help="Camera index (default 0)")
-    p.add_argument("--width", type=int, default=1280, help="Requested capture width")
-    p.add_argument("--height", type=int, default=720, help="Requested capture height")
-    p.add_argument("--save-dir", type=str, default="captures", help="Directory to save snapshots")
+    p = argparse.ArgumentParser(description="Webcam hand tracker (MediaPipe)")
+    p.add_argument("--camera", "-c", type=int, default=0)
+    p.add_argument("--width", type=int, default=1280)
+    p.add_argument("--height", type=int, default=720)
+    p.add_argument("--save-dir", type=str, default="captures")
     return p.parse_args()
 
+
+# -------------------------
+# Hand Tracking Manager
+# -------------------------
+class HandTracker:
+    def __init__(self, history_length=15):
+        self.history = defaultdict(lambda: deque(maxlen=history_length))
+        self.hands = mp_hands.Hands(
+            static_image_mode=False,
+            max_num_hands=2,
+            min_detection_confidence=0.6,
+            min_tracking_confidence=0.6
+        )
+
+    def process(self, frame):
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        return self.hands.process(rgb)
+
+    def update_history(self, results):
+        """
+        Store wrist positions (landmark 0) for motion-based detection
+        """
+        if not results.multi_hand_landmarks:
+            return
+
+        for idx, hl in enumerate(results.multi_hand_landmarks):
+            wrist = hl.landmark[0]
+            self.history[idx].append((wrist.x, wrist.y, wrist.z))
+
+    def draw(self, frame, results):
+        if not results.multi_hand_landmarks:
+            return
+
+        for hl in results.multi_hand_landmarks:
+            mp_drawing.draw_landmarks(
+                frame,
+                hl,
+                mp_hands.HAND_CONNECTIONS,
+                mp_drawing_styles.get_default_hand_landmarks_style(),
+                mp_drawing_styles.get_default_hand_connections_style()
+            )
+
+
+# -------------------------
+# Main Loop
+# -------------------------
 def main():
     args = parse_args()
     os.makedirs(args.save_dir, exist_ok=True)
 
     cap = cv2.VideoCapture(args.camera)
-    if not cap.isOpened():
-        print(f"ERROR: Cannot open camera {args.camera}")
-        return
-
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, args.width)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
+
+    tracker = HandTracker()
+
+    print("Press 's' to save, 'q' to quit.")
 
     prev_time = time.time()
     frame_count = 0
 
-    print("Press 's' to save a snapshot, 'q' or ESC to quit.")
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            print("ERROR: No frame")
+            break
 
-    # Initialize MediaPipe Hands
-    with mp_hands.Hands(
-        static_image_mode=False,
-        max_num_hands=2,
-        min_detection_confidence=0.6,
-        min_tracking_confidence=0.6
-    ) as hands:
+        # FPS
+        frame_count += 1
+        elapsed = time.time() - prev_time
+        fps = frame_count / elapsed
 
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                print("WARNING: Empty frame received — stopping")
-                break
+        # Detect hands
+        results = tracker.process(frame)
+        tracker.update_history(results)
+        tracker.draw(frame, results)
 
-            frame_count += 1
-            now = time.time()
-            elapsed = now - prev_time
-            fps = frame_count / elapsed if elapsed > 0 else 0.0
+        # Debug print (optional)
+        # print(tracker.history)
 
-            # Convert BGR to RGB
-            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            results = hands.process(rgb_frame)
+        # UI overlays
+        cv2.putText(frame, f"FPS: {fps:.1f}", (10, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,255,0), 2)
 
-            # Draw landmarks and print coordinates
-            if results.multi_hand_landmarks:
-                for hand_landmarks in results.multi_hand_landmarks:
-                    coords = [(lm.x, lm.y, lm.z) for lm in hand_landmarks.landmark]
-                    print(coords)
-                    mp_drawing.draw_landmarks(
-                        frame,
-                        hand_landmarks,
-                        mp_hands.HAND_CONNECTIONS,
-                        mp_drawing_styles.get_default_hand_landmarks_style(),
-                        mp_drawing_styles.get_default_hand_connections_style()
-                    )
+        cv2.imshow("Webcam", frame)
 
-            # Overlay FPS
-            cv2.putText(frame, f"FPS: {fps:.1f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
-            cv2.putText(frame, "Press 's' to save, 'q' or ESC to quit", (10, frame.shape[0] - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
-
-            cv2.imshow("Webcam", frame)
-
-            key = cv2.waitKey(1) & 0xFF
-            if key == ord('s'):
-                ts = time.strftime("%Y%m%d_%H%M%S")
-                filename = os.path.join(args.save_dir, f"snapshot_{ts}.jpg")
-                cv2.imwrite(filename, frame)
-                print(f"Saved snapshot: {filename}")
-            elif key == ord('q') or key == 27:
-                break
+        # Key controls
+        key = cv2.waitKey(1) & 0xFF
+        if key == ord('q') or key == 27:
+            break
 
     cap.release()
     cv2.destroyAllWindows()
+
 
 if __name__ == "__main__":
     main()
