@@ -34,6 +34,7 @@ class HandTracker:
             min_detection_confidence=0.6,
             min_tracking_confidence=0.6
         )
+        self.table_level = None
 
     def process(self, frame):
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -62,6 +63,24 @@ class HandTracker:
                 mp_drawing_styles.get_default_hand_landmarks_style(),
                 mp_drawing_styles.get_default_hand_connections_style()
             )
+
+    def detect_check(self, hand_id, threshold=0.02, min_tap_speed=0.02):
+        hist = list(self.history[hand_id])
+        if len(hist) < 5:
+            return False
+
+        # Extract y movement (vertical direction)
+        ys = [p[1] for p in hist]  # (x, y, z)
+        dy = ys[-1] - ys[-5]  # movement over last ~5 frames
+
+        # Must move downward fast
+        if dy > min_tap_speed:
+            # close to table
+            if self.table_level is not None and ys[-1] > (self.table_level - threshold):
+                return True
+
+        return False
+
 
 
 # -------------------------
@@ -96,6 +115,12 @@ def main():
         # Detect hands
         results = tracker.process(frame)
         tracker.update_history(results)
+        for hand_id in tracker.history.keys():
+            if tracker.detect_check(hand_id):
+                print("CHECK detected for hand", hand_id)
+                cv2.putText(frame, "CHECK!", (200, 200),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,255), 3)
+
         tracker.draw(frame, results)
 
         # Debug print (optional)
@@ -111,6 +136,11 @@ def main():
         key = cv2.waitKey(1) & 0xFF
         if key == ord('q') or key == 27:
             break
+        if key == ord('t'):
+            for hand_id, h in tracker.history.items():
+                tracker.table_level = sum(p[1] for p in h) / len(h)
+                print("Table calibrated at", tracker.table_level)
+
 
     cap.release()
     cv2.destroyAllWindows()
