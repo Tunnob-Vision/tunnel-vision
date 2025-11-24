@@ -7,7 +7,7 @@ import numpy as np
 # -------------------------
 # Parameters
 # -------------------------
-VIDEO_PATH = "input.mp4"
+VIDEO_PATH = "Fold.mp4"
 OUTPUT_PATH = "annotated_output.mp4"
 HISTORY_LENGTH = 10       # frames to compute motion
 MIN_MOVEMENT = 0.02       # normalized movement threshold
