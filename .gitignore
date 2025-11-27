@@ -1,6 +1,7 @@
 .vscode/
 
 venv/
+.venv/
 __pycache__/
 *.pyc
 .DS_Store
@@ -20,3 +21,4 @@ yolov8m.pt
 yolov8l.pt
 yolov8x.pt
 **.zip
+.python*
