@@ -26,6 +26,11 @@ def show_upload_page():
                 st.session_state['detected_cards'] = [card for card, _ in parsed]
                 summary = ", ".join(f"{card} ({conf:.0%})" for card, conf in parsed)
                 st.success(f"Hand guess: {summary}")
+
+                st.divider()
+                if st.button("➡️ Continue to Confirmation", type="primary", use_container_width=True):
+                    st.session_state['current_page'] = 'confirmation'
+                    st.rerun()
             else:
                 st.session_state.pop('detected_cards', None)
         else:

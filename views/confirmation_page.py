@@ -22,33 +22,45 @@ def _get_engine():
 
 
 def show_confirmation_page():
-    st.title("Confirm your hand! ✅")
+    # Check if coming from photo upload or manual entry
+    from_photo_upload = 'detected_cards' in st.session_state and st.session_state.get('detected_cards')
+    
+    if from_photo_upload:
+        st.title("Confirm your hand! ✅")
+        
+        if 'detected_hand' not in st.session_state:
+            detected_cards = st.session_state.get('detected_cards', [])
+            if detected_cards and len(detected_cards) >= 2:
+                st.session_state['detected_hand'] = Hand(
+                    cards=[detected_cards[0], detected_cards[1]]
+                )
+            else:
+                st.session_state['detected_hand'] = generate_random_hand()
 
-    if 'detected_hand' not in st.session_state:
-        detected_cards = st.session_state.get('detected_cards', [])
-        if detected_cards and len(detected_cards) >= 2:
-            st.session_state['detected_hand'] = Hand(
-                cards=[detected_cards[0], detected_cards[1]]
-            )
-        else:
-            st.session_state['detected_hand'] = generate_random_hand()
-
-    st.write("### We've detected the following cards:")
-    st.write(", ".join(card.__str__() for card in st.session_state['detected_hand'].cards))
+        st.write("### We've detected the following cards:")
+        st.write(", ".join(card.__str__() for card in st.session_state['detected_hand'].cards))
+    else:
+        st.title("Game State Input 🎰")
+        st.write("### Enter your hand and game information")
 
     full_deck = get_full_deck()
 
+    # Set default cards based on source
     default_cards = []
-    for detected_card in st.session_state['detected_hand'].cards:
-        matching_card = next(
-            (card for card in full_deck if card.rank == detected_card.rank and card.suit == detected_card.suit),
-            None
-        )
-        if matching_card:
-            default_cards.append(matching_card)
+    if from_photo_upload and 'detected_hand' in st.session_state:
+        for detected_card in st.session_state['detected_hand'].cards:
+            matching_card = next(
+                (card for card in full_deck if card.rank == detected_card.rank and card.suit == detected_card.suit),
+                None
+            )
+            if matching_card:
+                default_cards.append(matching_card)
+    elif 'player_hand' in st.session_state and st.session_state['player_hand']:
+        default_cards = st.session_state['player_hand'].cards
 
+    label = "Correct your hand if needed" if from_photo_upload else "Select your 2 hole cards"
     selected_cards = st.multiselect(
-        "Correct your hand if needed",
+        label,
         full_deck,
         default=default_cards,
         format_func=lambda card: str(card),
@@ -58,12 +70,19 @@ def show_confirmation_page():
     if 'selected_cards' not in st.session_state:
         st.session_state['selected_cards'] = []
     st.session_state['selected_cards'] = selected_cards
+    
+    # Show success message when 2 cards selected
+    if len(selected_cards) == 2:
+        st.success(f"✓ Your hand: {selected_cards[0]} {selected_cards[1]}")
+    elif len(selected_cards) > 0:
+        st.warning(f"Select exactly 2 cards (currently: {len(selected_cards)})")
 
-    st.write("### Add community cards (optional)")
+    st.divider()
+    st.write("### Community Cards (Board)")
 
     community_defaults = st.session_state.get('community_cards', [])
     community_cards = st.multiselect(
-        "Select board cards",
+        "Select board cards (optional)",
         full_deck,
         default=community_defaults,
         format_func=lambda card: str(card),
@@ -74,43 +93,59 @@ def show_confirmation_page():
     render_hand_summary()
 
     st.divider()
-    col1, col2 = st.columns(2)
+    
+    # Show appropriate action button
+    if from_photo_upload:
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("✅ Confirm Hand", type="primary", use_container_width=True):
+                if len(selected_cards) != 2:
+                    st.error("Please select exactly 2 cards.")
+                else:
+                    st.session_state['player_hand'] = Hand(cards=selected_cards.copy())
+                    st.toast("Hand confirmed successfully!", icon="✅")
 
-    with col1:
-        if st.button("✅ Confirm Hand", type="primary", use_container_width=True):
-            if len(selected_cards) != 2:
-                st.error("Please select exactly 2 cards.")
-            else:
-                st.session_state['player_hand'] = Hand(cards=selected_cards.copy())
-                st.toast("Hand confirmed successfully!", icon="✅")
-
-    with col2:
-        if st.button("🔄 Retry Analysis", use_container_width=True):
-            st.session_state['current_page'] = 'upload'
-            if 'detected_hand' in st.session_state:
-                del st.session_state['detected_hand']
-            if 'selected_cards' in st.session_state:
-                del st.session_state['selected_cards']
-            if 'player_hand' in st.session_state:
-                del st.session_state['player_hand']
-            for key in [
-                'community_cards',
-                'decision_result',
-                'player_stack',
-                'pot_size',
-                'amount_to_call',
-                'min_raise',
-                'strategy_profile',
-                'opponent_notes',
-                'detected_cards',
-                'num_opponents',
-            ]:
+        with col2:
+            if st.button("🔄 Retry Analysis", use_container_width=True):
+                st.session_state['current_page'] = 'upload'
+                if 'detected_hand' in st.session_state:
+                    del st.session_state['detected_hand']
+                if 'selected_cards' in st.session_state:
+                    del st.session_state['selected_cards']
+                if 'player_hand' in st.session_state:
+                    del st.session_state['player_hand']
+                for key in [
+                    'community_cards',
+                    'decision_result',
+                    'player_stack',
+                    'pot_size',
+                    'amount_to_call',
+                    'min_raise',
+                    'strategy_profile',
+                    'opponent_notes',
+                    'detected_cards',
+                    'num_opponents',
+                ]:
+                    if key in st.session_state:
+                        del st.session_state[key]
+                if 'camera_photo_captured' in st.session_state:
+                    st.session_state['camera_photo_captured'] = False
+                if 'photo' in st.session_state:
+                    del st.session_state['photo']
+                st.rerun()
+    else:
+        # For manual entry, just show reset button
+        if st.button("🔄 Reset Form", use_container_width=True):
+            keys_to_clear = [
+                'selected_cards', 'player_hand', 'community_cards',
+                'decision_result', 'player_stack', 'pot_size',
+                'amount_to_call', 'min_raise', 'strategy_profile',
+                'opponent_notes', 'num_opponents',
+            ]
+            for key in keys_to_clear:
                 if key in st.session_state:
                     del st.session_state[key]
-            if 'camera_photo_captured' in st.session_state:
-                st.session_state['camera_photo_captured'] = False
-            if 'photo' in st.session_state:
-                del st.session_state['photo']
             st.rerun()
 
     st.divider()
@@ -158,10 +193,12 @@ def show_confirmation_page():
 
     engine = _get_engine()
 
-    if st.button("💡 Get Recommendation", type="primary", use_container_width=True):
-        if 'player_hand' not in st.session_state:
-            st.error("Please confirm your hand first.")
+    if st.button("💡 Get AI Recommendation", type="primary", use_container_width=True):
+        if len(selected_cards) != 2:
+            st.error("Please select exactly 2 hole cards.")
         else:
+            # Update player hand
+            st.session_state['player_hand'] = Hand(cards=selected_cards.copy())
             try:
                 community = Community(cards=st.session_state.get('community_cards', []).copy())
                 game_state = PokerGameState(
