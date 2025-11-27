@@ -11,10 +11,10 @@ def show_upload_page():
 
     def process_photo(photo_file):
         """Helper to display and process uploaded/captured photo."""
-        st.image(photo_file, caption="Input Photo", use_container_width=True)
+        st.image(photo_file, caption="Input Photo", width="stretch")
 
         boxes_image, detections = run_inference(photo_file)
-        st.image(boxes_image, caption="🔎 Detected Cards", use_container_width=True)
+        st.image(boxes_image, caption="🔎 Detected Cards", width="stretch")
 
         if detections:
             st.subheader("📋 Detected Cards:")
@@ -28,7 +28,7 @@ def show_upload_page():
                 st.success(f"Hand guess: {summary}")
 
                 st.divider()
-                if st.button("➡️ Continue to Confirmation", type="primary", use_container_width=True):
+                if st.button("➡️ Continue to Confirmation", type="primary", width="stretch"):
                     st.session_state['current_page'] = 'confirmation'
                     st.rerun()
             else:

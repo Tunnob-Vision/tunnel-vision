@@ -13,14 +13,14 @@ if st.session_state['current_page'] is None:
     with col1:
         st.subheader("📸 Photo Analysis")
         st.write("Upload or capture a photo of your cards for automatic detection")
-        if st.button("Start Photo Upload", use_container_width=True, type="primary"):
+        if st.button("Start Photo Upload", width="stretch", type="primary"):
             st.session_state['current_page'] = 'upload'
             st.rerun()
 
     with col2:
         st.subheader("⌨️ Manual Input")
         st.write("Manually enter your cards and game state for AI recommendations")
-        if st.button("Enter Game State", use_container_width=True, type="primary"):
+        if st.button("Enter Game State", width="stretch", type="primary"):
             st.session_state['current_page'] = 'confirmation'
             st.rerun()
 
